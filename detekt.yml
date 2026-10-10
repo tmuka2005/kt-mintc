@@ -1,0 +1,52 @@
+comments:
+  OutdatedDocumentation:
+    active: false
+  UndocumentedPublicClass:
+    active: false
+  UndocumentedPublicFunction:
+    active: false
+  UndocumentedPublicProperty:
+    active: false
+
+complexity:
+  LabeledExpression:
+    active: false
+  TooManyFunctions:
+    active: false
+
+coroutines:
+  InjectDispatcher:
+    excludes: ['**/Main.kt']
+  SuspendFunInFinallySection:
+    active: false
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+
+naming:
+  FunctionNameMaxLength:
+    active: false
+  FunctionNameMinLength:
+    active: false
+  MatchingDeclarationName:
+    active: false
+  PackageNaming:
+    packagePattern: '[a-z]+(\.[a-z][A-Za-z0-9_]*)*'
+
+style:
+  BracesOnIfStatements:
+    singleLine: always
+    multiLine: always
+  ClassOrdering:
+    active: false
+  MagicNumber:
+    active: false
+  MultilineRawStringIndentation:
+    active: false
+  RedundantVisibilityModifier:
+    active: false
+  UnderscoresInNumericLiterals:
+    active: false
+  UnnecessaryParentheses:
+    allowForUnclearPrecedence: true
