@@ -215,6 +215,10 @@ private fun startOf(
       Start.nullable
     }
 
+    is Pratt<*, *> -> {
+      startOfPratt(parser)
+    }
+
     is Custom<*, *> -> {
       Start.opaque
     }
@@ -237,5 +241,14 @@ private fun startOfMany(
     itemStart.optional()
   } else {
     itemStart
+  }
+}
+
+private fun startOfPratt(
+  pratt: Pratt<*, *>,
+): Start {
+  val operators = pratt.prefixes.map { it.operator.operator }
+  return operators.fold(pratt.atom.start()) { start, operator ->
+    start.or(operator.start())
   }
 }
