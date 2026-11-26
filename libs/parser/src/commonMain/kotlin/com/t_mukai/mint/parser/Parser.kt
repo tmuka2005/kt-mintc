@@ -1,0 +1,85 @@
+package com.t_mukai.mint.parser
+
+import arrow.core.None
+import arrow.core.Some
+
+public sealed interface Parser<out T, out E> {
+  public fun parse(
+    ctx: Context<in E>,
+    mode: Mode,
+  ): ParseResult<T>
+}
+
+public fun <T, E> Parser<T, E>.parse(
+  input: String,
+): Output<T, E> =
+  parseAll(Context(input.toCharArray()))
+
+public fun <T> custom(
+  block: Context<in Nothing>.(Mode) -> ParseResult<T>,
+): Parser<T, Nothing> =
+  Custom(block)
+
+// region internal
+
+internal class Custom<T, E>(
+  private val block: Context<in E>.(Mode) -> ParseResult<T>,
+) : Parser<T, E> {
+  override fun parse(
+    ctx: Context<in E>,
+    mode: Mode,
+  ): ParseResult<T> =
+    parseBlock(ctx, mode)
+
+  private fun parseBlock(
+    ctx: Context<in E>,
+    mode: Mode,
+  ): ParseResult<T> {
+    val start = ctx.mark()
+    val result = ctx.block(mode)
+    if (result.isFailure) {
+      ctx.rewind(start)
+    }
+    return result
+  }
+}
+
+private fun <T, E> Parser<T, E>.parseAll(
+  ctx: Context<E>,
+): Output<T, E> {
+  val result = parse(ctx, Mode.Emit)
+  if (result.isSuccess && ctx.isAtEnd) {
+    return Output(Some(result.value), ctx.locatedDiagnostics())
+  }
+  if (result.isSuccess) {
+    ctx.record(ctx.pos, Expected.EndOfInput)
+  }
+  ctx.furthestFailure()?.let { ctx.unexpected(it) }
+  return Output(None, ctx.locatedDiagnostics())
+}
+
+private fun <E> Context<E>.locatedDiagnostics(): List<Diagnostic<E>> =
+  diagnostics.map { it.locatedIn(this) }
+
+private fun <E> Recorded<E>.locatedIn(
+  ctx: Context<E>,
+): Diagnostic<E> {
+  val start = ctx.clusters.locationOf(start)
+  val end = ctx.clusters.locationOf(end)
+  return when (this) {
+    is Recorded.Unexpected -> {
+      Diagnostic.Unexpected(start, end, expected, ctx.foundAt(this.start))
+    }
+  }
+}
+
+private fun Context<*>.foundAt(
+  index: Int,
+): String? =
+  if (index < input.size) {
+    clusters.clusterAt(index).toString()
+  } else {
+    null
+  }
+
+// endregion

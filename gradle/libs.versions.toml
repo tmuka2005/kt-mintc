@@ -11,6 +11,7 @@ logback-classic = { module = "ch.qos.logback:logback-classic", version = "+" }
 kotest-framework-engine = { module = "io.kotest:kotest-framework-engine", version = "+" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version = "+" }
 kotest-property = { module = "io.kotest:kotest-property", version = "+" }
+kotest-assertions-arrow = { module = "io.kotest:kotest-assertions-arrow", version = "+" }
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version = "+" }
 ktlint-cli = { module = "io.github.ktlint.core:ktlint-cli", version = "+" }
 
