@@ -49,7 +49,13 @@ internal class Choice<T, E>(val candidates: List<Parser<T, E>>) :
     start: Mark,
   ): ParseResult<T> =
     if (c.code < ASCII_SIZE) {
-      tryEach(dispatch.ascii[c.code], ctx, mode, start)
+      val table =
+        if (ctx.mayStartComment(c)) {
+          dispatch.asciiOrPadded
+        } else {
+          dispatch.ascii
+        }
+      tryEach(table[c.code], ctx, mode, start)
     } else {
       tryEachStartingWith(c, dispatch, ctx, mode, start)
     }
@@ -79,8 +85,10 @@ internal class Choice<T, E>(val candidates: List<Parser<T, E>>) :
   ): ParseResult<T> {
     val parsers = dispatch.nonAscii
     val starts = dispatch.nonAsciiStarts
+    val paddingStarts = c.isWhitespace() || ctx.mayStartComment(c)
     for (i in parsers.indices) {
-      if (!starts[i].mayStartWith(c)) {
+      val first = starts[i]
+      if (!first.mayStartWith(c) && !(first.padded && paddingStarts)) {
         continue
       }
       val result = parsers[i].parse(ctx, mode)
@@ -136,8 +144,16 @@ private class Dispatch<T, E>(candidates: List<Parser<T, E>>) {
 
   val ascii: List<List<Parser<T, E>>> =
     List(ASCII_SIZE) { code ->
+      val c = code.toChar()
       candidates.filterIndexed { i, _ ->
-        starts[i].mayStartWith(code.toChar())
+        starts[i].mayStartWith(c) || (starts[i].padded && c.isWhitespace())
+      }
+    }
+
+  val asciiOrPadded: List<List<Parser<T, E>>> =
+    List(ASCII_SIZE) { code ->
+      candidates.filterIndexed { i, _ ->
+        starts[i].mayStartWith(code.toChar()) || starts[i].padded
       }
     }
 

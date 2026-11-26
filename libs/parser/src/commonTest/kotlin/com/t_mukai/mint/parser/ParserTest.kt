@@ -98,6 +98,18 @@ class ParserTest :
         .toString() shouldBe "a"
     }
 
+    test("withSlice keeps both the value and the consumed text") {
+      digit
+        .slice()
+        .map { it.toString().toInt() }
+        .padded()
+        .withSlice()
+        .map { value, text -> value to text.toString() }
+        .parse("1 ")
+        .value
+        .shouldBeSome(1 to "1 ")
+    }
+
     test("just matches the literal regardless of what follows") {
       just("let")
         .then(char('t'))

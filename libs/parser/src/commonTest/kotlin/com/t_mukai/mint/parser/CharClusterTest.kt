@@ -96,6 +96,24 @@ class CharClusterTest :
         [Diagnostic.Reported(Location(1, 2), Location(1, 3), Decorated)]
     }
 
+    test("padding skips CRLF") {
+      char('a')
+        .padded()
+        .then(char('b'))
+        .parse("a\r\nb")
+        .value
+        .shouldBeSome()
+    }
+
+    test("padding does not skip decorated whitespace") {
+      char('a')
+        .padded()
+        .then(char('b'))
+        .parse("a \u0301b")
+        .value
+        .shouldBeNone()
+    }
+
     test("decorated char records nothing without onDecorated") {
       val (value, diagnostics) = char('"').parse("\"\u0301")
       value.shouldBeSome()

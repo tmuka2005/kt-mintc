@@ -9,6 +9,8 @@ import kotlin.text.unicode.toCodePoint
 
 public class Context<E> internal constructor(
   internal val input: CharArray,
+  private val comment: Parser<*, E>?,
+  private val terminator: Parser<*, E>?,
   private val onDecorated: E?,
 ) {
   public var pos: Int = 0
@@ -24,11 +26,22 @@ public class Context<E> internal constructor(
 
   private var silence: Int = 0
 
+  private val delimiters: ArrayDeque<Delimiter> = ArrayDeque()
+
   private val decorations: ArrayDeque<E?> = ArrayDeque()
 
   private val text = Slice(input, 0, input.size)
 
   internal val clusters = CharClusters(text)
+
+  private val commentStart: Start? = comment?.start()
+
+  private val terminatorStart: Start? = terminator?.start()
+
+  private val asciiCommentStart =
+    BooleanArray(ASCII_SIZE) {
+      commentStart?.mayStartWith(it.toChar()) == true
+    }
 
   public fun peek(): CharCluster? =
     clusterAtPos()
@@ -140,6 +153,32 @@ public class Context<E> internal constructor(
     decorations.removeLast()
   }
 
+  internal fun pushDelimiter(
+    delimiter: Delimiter,
+  ) {
+    delimiters.addLast(delimiter)
+  }
+
+  internal fun popDelimiter() {
+    delimiters.removeLast()
+  }
+
+  internal fun isAtTerminator(): Boolean =
+    terminatesHere()
+
+  internal fun skipPadding() {
+    skipPaddingHere()
+  }
+
+  internal fun mayStartComment(
+    c: Char,
+  ): Boolean =
+    if (c.code < ASCII_SIZE) {
+      asciiCommentStart[c.code]
+    } else {
+      commentStart?.mayStartWith(c) == true
+    }
+
   internal fun furthestFailure(): Recorded.Unexpected? =
     furthestPos.takeIf { it >= 0 }?.let {
       Recorded.Unexpected(it, it, furthestExpected.toSet())
@@ -177,6 +216,56 @@ public class Context<E> internal constructor(
     if (kind != null) {
       report(start, end, kind)
     }
+  }
+
+  private fun terminatesHere(): Boolean =
+    terminator != null &&
+      terminatorStart != null &&
+      delimiters.lastOrNull()?.terminated != false &&
+      (isAtEnd || terminatorStart.mayStartWith(current)) &&
+      matches(terminator)
+
+  private fun skipPaddingHere() {
+    while (!isAtEnd) {
+      val c = current
+      val skipped =
+        if (c.isWhitespace()) {
+          skipWhitespace()
+        } else {
+          skipComment(c)
+        }
+      if (!skipped) {
+        return
+      }
+    }
+  }
+
+  private fun skipWhitespace(): Boolean {
+    if (isAtTerminator() || !isAtWhitespaceCluster()) {
+      return false
+    }
+    advanceCluster()
+    return true
+  }
+
+  private fun isAtWhitespaceCluster(): Boolean =
+    (pos until clusters.endOf(pos)).all { input[it].isWhitespace() }
+
+  private fun skipComment(
+    c: Char,
+  ): Boolean =
+    comment != null && mayStartComment(c) && skipsWith(comment)
+
+  private fun skipsWith(
+    parser: Parser<*, E>,
+  ): Boolean {
+    val start = pos
+    val skipped =
+      quietly { parser.parse(this, Mode.Check).isSuccess } && pos > start
+    if (!skipped) {
+      pos = start
+    }
+    return skipped
   }
 
   private fun lookAhead(
@@ -312,5 +401,10 @@ public class Context<E> internal constructor(
 // region internal
 
 internal const val ASCII_SIZE = 128
+
+internal class Delimiter(
+  val close: Char,
+  val terminated: Boolean,
+)
 
 // endregion

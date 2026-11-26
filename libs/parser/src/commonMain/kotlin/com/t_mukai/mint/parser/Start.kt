@@ -4,13 +4,15 @@ internal class Start(
   private val ranges: List<CharRange>,
   private val nullable: Boolean,
   private val opaque: Boolean,
+  val padded: Boolean,
   val expected: Set<Expected>,
 ) {
   val mayMatchAtEnd: Boolean
     get() = opaque || nullable
 
   val mayStartWithNonAscii: Boolean
-    get() = mayMatchAtEnd || ranges.any { it.last.code >= ASCII_SIZE }
+    get() =
+      mayMatchAtEnd || padded || ranges.any { it.last.code >= ASCII_SIZE }
 
   fun mayStartWith(
     c: Char,
@@ -29,30 +31,27 @@ internal class Start(
       ranges + other.ranges,
       nullable || other.nullable,
       opaque || other.opaque,
+      padded || other.padded,
       expected + other.expected,
     )
 
   fun optional(): Start =
-    Start(ranges, true, opaque, expected)
+    Start(ranges, true, opaque, padded, expected)
+
+  fun padded(): Start =
+    Start(ranges, nullable, opaque, true, expected)
 
   fun labeled(
     label: Expected.Label,
   ): Start =
-    Start(ranges, nullable, opaque, setOf(label))
+    Start(ranges, nullable, opaque, padded, setOf(label))
 
   companion object {
-    val opaque: Start =
-      Start(emptyList(), nullable = true, opaque = true, expected = emptySet())
+    val opaque: Start = constant(nullable = true, opaque = true)
 
-    val nullable: Start =
-      Start(
-        emptyList(), nullable = true, opaque = false, expected = emptySet(),
-      )
+    val nullable: Start = constant(nullable = true, opaque = false)
 
-    val never: Start =
-      Start(
-        emptyList(), nullable = false, opaque = false, expected = emptySet(),
-      )
+    val never: Start = constant(nullable = false, opaque = false)
 
     val anyChar: Start =
       of(Char.MIN_VALUE..Char.MAX_VALUE, Expected.AnyChar)
@@ -60,13 +59,19 @@ internal class Start(
     fun empty(
       expected: Expected,
     ): Start =
-      Start(emptyList(), nullable = true, opaque = false, setOf(expected))
+      Start(emptyList(), true, opaque = false, padded = false, setOf(expected))
 
     fun of(
       range: CharRange,
       expected: Expected,
     ): Start =
-      Start([range], nullable = false, opaque = false, setOf(expected))
+      Start([range], false, opaque = false, padded = false, setOf(expected))
+
+    private fun constant(
+      nullable: Boolean,
+      opaque: Boolean,
+    ): Start =
+      Start(emptyList(), nullable, opaque, padded = false, emptySet())
   }
 
   private fun followedBy(
@@ -80,6 +85,7 @@ internal class Start(
       ranges + rest.ranges,
       rest.nullable,
       opaque || rest.opaque,
+      padded || rest.padded,
       expected + rest.expected,
     )
   }
@@ -169,6 +175,16 @@ private fun startOf(
       parser.inner
         .start()
         .labeled(parser.label)
+    }
+
+    is Padded<*, *> -> {
+      parser.inner
+        .start()
+        .padded()
+    }
+
+    is Delimited<*, *> -> {
+      Start.of(parser.open..parser.open, Expected.Char(parser.open))
     }
 
     is Recursive<*, *> -> {
