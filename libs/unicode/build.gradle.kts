@@ -11,12 +11,25 @@ val ucdDirectory = layout.projectDirectory.dir("ucd")
 val generateUnicodeRanges by tasks.registering(GenerateUnicodeRanges::class) {
   sources.from(
     ucdDirectory.file("DerivedCoreProperties.txt"),
+    ucdDirectory.file("GraphemeBreakProperty.txt"),
+    ucdDirectory.file("emoji-data.txt"),
   )
   ranges =
     mapOf(
       "xidStartRanges" to "XID_Start",
       "xidContinueRanges" to "XID_Continue",
       "defaultIgnorableRanges" to "Default_Ignorable_Code_Point",
+      "prependRanges" to "Prepend",
+      "controlRanges" to "Control",
+      "extendRanges" to "Extend",
+      "spacingMarkRanges" to "SpacingMark",
+      "hangulLeadingRanges" to "L",
+      "hangulVowelRanges" to "V",
+      "hangulTrailingRanges" to "T",
+      "extendedPictographicRanges" to "Extended_Pictographic",
+      "conjunctConsonantRanges" to "InCB=Consonant",
+      "conjunctExtendRanges" to "InCB=Extend",
+      "conjunctLinkerRanges" to "InCB=Linker",
     )
   packageName = "com.t_mukai.mint.unicode"
   outputDirectory = layout.buildDirectory.dir("generated/unicode")

@@ -25,4 +25,12 @@ class DerivedCorePropertiesTest :
         it.isDefaultIgnorable()
       }.shouldBeEmpty()
     }
+
+    test("conjunctBreakOf matches InCB") {
+      for (conjunct in ConjunctBreak.entries - ConjunctBreak.None) {
+        mismatches(properties.getValue("InCB=${conjunct.name}")) {
+          conjunctBreakOf(it) == conjunct
+        }.shouldBeEmpty()
+      }
+    }
   })
