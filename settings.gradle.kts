@@ -16,5 +16,6 @@ gradle.lifecycle.beforeProject {
 }
 
 include(":app")
+include(":app:syntax")
 include(":libs:unicode")
 include(":libs:parser")
