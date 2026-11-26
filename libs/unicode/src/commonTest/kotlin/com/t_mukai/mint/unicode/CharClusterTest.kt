@@ -67,4 +67,50 @@ class CharClusterTest :
     test("baseIndexAt is negative without a base") {
       CharClusters("\u0600").baseIndexAt(0) shouldBe -1
     }
+
+    test("displayWidth follows the base character") {
+      mapOf(
+        "a" to 1,
+        "\u3042" to 2,
+        "e\u0301" to 1,
+        "\u03B1" to 1,
+        "\u1100\u1161\u11A8" to 2,
+        "\uD83D\uDC68\u200D\uD83D\uDC69" to 2,
+        "\u200B" to 0,
+      ).forEach { (key, value) ->
+        clusters(key).single().displayWidth() shouldBe value
+      }
+    }
+
+    test("displayWidth is wide with the emoji presentation selector") {
+      clusters("\u2764").single().displayWidth() shouldBe 1
+      clusters("\u2764\uFE0F").single().displayWidth() shouldBe 2
+    }
+
+    test("isNewline accepts each line terminator") {
+      ["\n", "\u000B", "\u000C", "\r", "\r\n"]
+        .plus(listOf("\u0085", "\u2028", "\u2029"))
+        .forEach { clusters(it).single().isNewline() shouldBe true }
+      clusters("a").single().isNewline() shouldBe false
+    }
+
+    test("locationOf counts display columns from the line start") {
+      val clusters = CharClusters("\u3042a\nxyz")
+      clusters.locationOf(0) shouldBe Location(1, 1)
+      clusters.locationOf(1) shouldBe Location(1, 3)
+      clusters.locationOf(5) shouldBe Location(2, 3)
+    }
+
+    test("locationOf treats CRLF as one line break") {
+      CharClusters("a\r\nb").locationOf(3) shouldBe Location(2, 1)
+    }
+
+    test("locationOf expands tabs and replaced controls") {
+      CharClusters("\ta").locationOf(1) shouldBe Location(1, 5)
+      CharClusters("\u202Ea").locationOf(1) shouldBe Location(1, 2)
+    }
+
+    test("locationOf inside a cluster points to the cluster start") {
+      CharClusters("xe\u0301").locationOf(2) shouldBe Location(1, 2)
+    }
   })

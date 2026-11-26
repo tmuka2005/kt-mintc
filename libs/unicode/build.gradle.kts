@@ -13,6 +13,7 @@ val generateUnicodeRanges by tasks.registering(GenerateUnicodeRanges::class) {
     ucdDirectory.file("DerivedCoreProperties.txt"),
     ucdDirectory.file("GraphemeBreakProperty.txt"),
     ucdDirectory.file("emoji-data.txt"),
+    ucdDirectory.file("EastAsianWidth.txt"),
   )
   ranges =
     mapOf(
@@ -30,6 +31,8 @@ val generateUnicodeRanges by tasks.registering(GenerateUnicodeRanges::class) {
       "conjunctConsonantRanges" to "InCB=Consonant",
       "conjunctExtendRanges" to "InCB=Extend",
       "conjunctLinkerRanges" to "InCB=Linker",
+      "wideRanges" to "W",
+      "fullwidthRanges" to "F",
     )
   packageName = "com.t_mukai.mint.unicode"
   outputDirectory = layout.buildDirectory.dir("generated/unicode")

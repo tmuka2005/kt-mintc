@@ -18,6 +18,12 @@ public class CharCluster(
   ): BaseMatch =
     matchBaseAt(findBaseIndex(input, start, end), codePoint)
 
+  public fun displayWidth(): Int =
+    measureWidth()
+
+  public fun isNewline(): Boolean =
+    isLineTerminator()
+
   override fun toString(): String =
     input.subSequence(start, end).toString()
 
@@ -65,6 +71,34 @@ public class CharCluster(
     }
   }
 
+  private fun measureWidth(): Int {
+    val baseIndex = findBaseIndex(input, start, end)
+    val base =
+      input.codePointAt(
+        if (baseIndex < 0) {
+          start
+        } else {
+          baseIndex
+        },
+      )
+    return when {
+      containsEmojiPresentationSelector() -> WIDE_WIDTH
+      base.isDefaultIgnorable() -> 0
+      isEastAsianWide(base) -> WIDE_WIDTH
+      else -> 1
+    }
+  }
+
+  private fun isLineTerminator(): Boolean =
+    when (end - start) {
+      1 -> input[start] in newlineChars
+      2 -> input[start] == '\r' && input[start + 1] == '\n'
+      else -> false
+    }
+
+  private fun containsEmojiPresentationSelector(): Boolean =
+    (start until end).any { input[it] == EMOJI_PRESENTATION_SELECTOR }
+
   private fun hasSameChars(
     other: CharCluster,
   ): Boolean =
@@ -108,9 +142,54 @@ public class CharClusters(private val input: CharSequence) {
     start: Int,
   ): CharCluster =
     CharCluster(input, start, endOf(start))
+
+  public fun locationOf(
+    index: Int,
+  ): Location =
+    locate(index)
+
+  // region internal
+
+  private fun locate(
+    index: Int,
+  ): Location {
+    var row = 1
+    var col = 1
+    var start = 0
+    while (start < index && endOf(start) <= index) {
+      val cluster = clusterAt(start)
+      if (cluster.isNewline()) {
+        row++
+        col = 1
+      } else {
+        col += columnsOf(cluster)
+      }
+      start = cluster.end
+    }
+    return Location(row, col)
+  }
+
+  private fun columnsOf(
+    cluster: CharCluster,
+  ): Int {
+    val first = input.codePointAt(cluster.start)
+    return when {
+      first.code == TAB -> TAB_WIDTH
+      directionControlRanges.any { first.code in it } -> 1
+      else -> cluster.displayWidth()
+    }
+  }
+
+  // endregion
 }
 
 // region internal
+
+internal fun isEastAsianWide(
+  codePoint: CodePoint,
+): Boolean =
+  wideRanges.rangesContain(codePoint) ||
+    fullwidthRanges.rangesContain(codePoint)
 
 private fun findBaseIndex(
   input: CharSequence,
@@ -127,6 +206,19 @@ private fun findBaseIndex(
   }
   return -1
 }
+
+private val newlineChars: Set<Char> =
+  ['\n', '\u000B', '\u000C', '\r', '\u0085', '\u2028', '\u2029']
+
+private val directionControlRanges = [0x202A..0x202E, 0x2066..0x2069]
+
+private const val EMOJI_PRESENTATION_SELECTOR = '\uFE0F'
+
+private const val TAB = 0x09
+
+private const val TAB_WIDTH = 4
+
+private const val WIDE_WIDTH = 2
 
 private const val HASH_MULTIPLIER = 31
 
