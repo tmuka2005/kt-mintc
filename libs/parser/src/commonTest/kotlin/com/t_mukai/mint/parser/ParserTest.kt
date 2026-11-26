@@ -9,7 +9,14 @@ import io.kotest.matchers.shouldBe
 @Suppress("unused")
 class ParserTest :
   FunSpec({
-    val digit = char('0'..'9')
+    val digit = char('0'..'9').labeled("digit")
+    val letter = choice(char('a'..'z'), char('A'..'Z'), char('_'))
+    val ident =
+      letter
+        .then(many(choice(letter, char('0'..'9'))))
+        .slice()
+        .map { it.toString() }
+        .labeled("identifier")
 
     fun <T> Output<T, *>.errorSummary() =
       diagnostics
@@ -51,6 +58,19 @@ class ParserTest :
         .shouldBeSome()
     }
 
+    test("then and map unpack by lambda arity") {
+      val pair =
+        ident
+          .thenIgnore(char('='))
+          .then(digit.slice())
+          .then(char(';').slice())
+          .map { name, value, end -> "$name:$value$end" }
+      pair
+        .parse("x1=5;")
+        .value
+        .shouldBeSome("x1:5;")
+    }
+
     test("map unpacks up to nine values") {
       val one = digit.slice().map { it.toString() }
       val nine =
@@ -72,11 +92,127 @@ class ParserTest :
         .shouldBeSome("123456789")
     }
 
+    test("many respects atLeast and exactly") {
+      val digits =
+        many(digit)
+          .atLeast(2)
+          .slice()
+          .map { it.toString() }
+      digits
+        .parse("123")
+        .value
+        .shouldBeSome("123")
+      digits
+        .parse("1")
+        .value
+        .shouldBeNone()
+      many(digit)
+        .exactly(2)
+        .map { it.size }
+        .parse("12")
+        .value
+        .shouldBeSome(2)
+    }
+
+    test("choice tries overlapping candidates in order") {
+      val parser =
+        choice(
+          keyword("let").map { "let" },
+          ident,
+        )
+      parser
+        .parse("let")
+        .value
+        .shouldBeSome("let")
+      parser
+        .parse("letter")
+        .value
+        .shouldBeSome("letter")
+    }
+
+    test("choice reports the expectations of skipped candidates") {
+      val p = choice(ident, digit.slice().map { it.toString() })
+      p.parse("+").errorSummary() shouldBe
+        [
+          Location(1, 1) to
+            setOf(Expected.Label("identifier"), Expected.Label("digit")),
+        ]
+    }
+
+    test("choice handles non-ASCII candidates") {
+      val parser =
+        choice(
+          char('あ').map { 1 },
+          char('い').map { 2 },
+        )
+      parser
+        .parse("い")
+        .value
+        .shouldBeSome(2)
+      parser
+        .parse("う")
+        .errorSummary() shouldBe
+        [
+          Location(1, 1) to
+            setOf(
+              Expected.Char('あ'),
+              Expected.Char('い'),
+            ),
+        ]
+    }
+
+    test("the furthest failure wins") {
+      val parser =
+        choice(
+          just("ab").then(char('c')).map { 1 },
+          just("a").map { 2 },
+        )
+      parser
+        .parse("abx")
+        .errorSummary() shouldBe
+        [Location(1, 3) to setOf(Expected.Char('c'))]
+    }
+
+    test("labeled replaces expectations inside it") {
+      val call =
+        char('f')
+          .thenIgnore(char('('))
+          .labeled("call")
+      call
+        .parse("1")
+        .errorSummary() shouldBe
+        [Location(1, 1) to setOf(Expected.Label("call"))]
+
+      call
+        .parse("f")
+        .errorSummary() shouldBe
+        [Location(1, 1) to setOf(Expected.Label("call"))]
+    }
+
     test("trailing input reports end of input") {
       digit
         .parse("12")
         .errorSummary() shouldBe
         [Location(1, 2) to setOf(Expected.EndOfInput)]
+    }
+
+    test("recursive parsers can refer to themselves") {
+      val nested =
+        recursive { self ->
+          choice(
+            char('(')
+              .ignoreThen(self)
+              .thenIgnore(char(')'))
+              .map { it + 1 },
+            char('x').map { 0 },
+          )
+        }
+      nested
+        .parse("((x))")
+        .value
+        .shouldBeSome(2)
+      nested.parse("((x)").errorSummary() shouldBe
+        [Location(1, 5) to setOf(Expected.Char(')'))]
     }
 
     test("custom parsers can drive the context") {

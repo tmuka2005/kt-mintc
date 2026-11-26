@@ -58,6 +58,14 @@ class CharClusterTest :
         .shouldBeSome()
     }
 
+    test("keyword is not a whole word before a supplementary letter") {
+      keyword("if")
+        .then(many(any()))
+        .parse("if\uD842\uDFB7")
+        .value
+        .shouldBeNone()
+    }
+
     test("newline reads CRLF as one line break") {
       char('a')
         .then(newline())

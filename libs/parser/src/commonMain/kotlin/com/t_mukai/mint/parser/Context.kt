@@ -17,6 +17,8 @@ public class Context<E> internal constructor(internal val input: CharArray) {
 
   private val furthestExpected: MutableSet<Expected> = HashSet()
 
+  internal var insideLabel: Boolean = false
+
   private val text = Slice(input, 0, input.size)
 
   internal val clusters = CharClusters(text)
@@ -45,6 +47,9 @@ public class Context<E> internal constructor(internal val input: CharArray) {
 
   internal val isAtEnd: Boolean
     get() = pos >= input.size
+
+  internal val current: Char
+    get() = baseCharAtPos()
 
   internal fun unexpected(
     failure: Recorded.Unexpected,
@@ -89,6 +94,15 @@ public class Context<E> internal constructor(internal val input: CharArray) {
     }
   }
 
+  internal fun record(
+    at: Int,
+    expected: Set<Expected>,
+  ) {
+    if (expected.isNotEmpty() && reaches(at)) {
+      furthestExpected += expected
+    }
+  }
+
   internal fun furthestFailure(): Recorded.Unexpected? =
     furthestPos.takeIf { it >= 0 }?.let {
       Recorded.Unexpected(it, it, furthestExpected.toSet())
@@ -100,6 +114,17 @@ public class Context<E> internal constructor(internal val input: CharArray) {
     } else {
       clusters.clusterAt(pos)
     }
+
+  private fun baseCharAtPos(): Char {
+    val c = input[pos]
+    val baseIndex =
+      if (c.code < ASCII_SIZE) {
+        -1
+      } else {
+        clusters.baseIndexAt(pos)
+      }
+    return input.getOrElse(baseIndex) { c }
+  }
 
   private fun <T> runRewinding(
     parser: Parser<T, E>,
@@ -180,7 +205,7 @@ public class Context<E> internal constructor(internal val input: CharArray) {
   private fun reaches(
     at: Int,
   ): Boolean {
-    if (at < furthestPos) {
+    if (insideLabel || at < furthestPos) {
       return false
     }
     if (at > furthestPos) {

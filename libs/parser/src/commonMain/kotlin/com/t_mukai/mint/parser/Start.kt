@@ -1,0 +1,201 @@
+package com.t_mukai.mint.parser
+
+internal class Start(
+  private val ranges: List<CharRange>,
+  private val nullable: Boolean,
+  private val opaque: Boolean,
+  val expected: Set<Expected>,
+) {
+  val mayMatchAtEnd: Boolean
+    get() = opaque || nullable
+
+  val mayStartWithNonAscii: Boolean
+    get() = mayMatchAtEnd || ranges.any { it.last.code >= ASCII_SIZE }
+
+  fun mayStartWith(
+    c: Char,
+  ): Boolean =
+    mayMatchAtEnd || ranges.any { c in it }
+
+  fun then(
+    next: () -> Start,
+  ): Start =
+    followedBy(next)
+
+  fun or(
+    other: Start,
+  ): Start =
+    Start(
+      ranges + other.ranges,
+      nullable || other.nullable,
+      opaque || other.opaque,
+      expected + other.expected,
+    )
+
+  fun optional(): Start =
+    Start(ranges, true, opaque, expected)
+
+  fun labeled(
+    label: Expected.Label,
+  ): Start =
+    Start(ranges, nullable, opaque, setOf(label))
+
+  companion object {
+    val opaque: Start =
+      Start(emptyList(), nullable = true, opaque = true, expected = emptySet())
+
+    val nullable: Start =
+      Start(
+        emptyList(), nullable = true, opaque = false, expected = emptySet(),
+      )
+
+    val never: Start =
+      Start(
+        emptyList(), nullable = false, opaque = false, expected = emptySet(),
+      )
+
+    val anyChar: Start =
+      of(Char.MIN_VALUE..Char.MAX_VALUE, Expected.AnyChar)
+
+    fun empty(
+      expected: Expected,
+    ): Start =
+      Start(emptyList(), nullable = true, opaque = false, setOf(expected))
+
+    fun of(
+      range: CharRange,
+      expected: Expected,
+    ): Start =
+      Start([range], nullable = false, opaque = false, setOf(expected))
+  }
+
+  private fun followedBy(
+    next: () -> Start,
+  ): Start {
+    if (!nullable) {
+      return this
+    }
+    val rest = next()
+    return Start(
+      ranges + rest.ranges,
+      rest.nullable,
+      opaque || rest.opaque,
+      expected + rest.expected,
+    )
+  }
+}
+
+internal fun Parser<*, *>.start(): Start =
+  startOf(this)
+
+@Suppress("CyclomaticComplexMethod", "LongMethod")
+private fun startOf(
+  parser: Parser<*, *>,
+): Start =
+  when (parser) {
+    is CharParser -> {
+      Start.of(parser.c..parser.c, Expected.Char(parser.c))
+    }
+
+    is RangeParser -> {
+      Start.of(parser.range, Expected.Range(parser.range))
+    }
+
+    is CodePointParser -> {
+      Start.of(Char.MIN_VALUE..Char.MAX_VALUE, parser.label)
+    }
+
+    is LiteralParser -> {
+      startOfLiteral(parser.text)
+    }
+
+    AnyParser -> {
+      Start.anyChar
+    }
+
+    EndParser -> {
+      Start.empty(Expected.EndOfInput)
+    }
+
+    EmptyParser -> {
+      Start.nullable
+    }
+
+    NewlineParser -> {
+      Start.of(Char.MIN_VALUE..Char.MAX_VALUE, NewlineParser.label)
+    }
+
+    is Then<*, *, *> -> {
+      parser.first
+        .start()
+        .then { parser.second.start() }
+    }
+
+    is ThenIgnore<*, *> -> {
+      parser.first
+        .start()
+        .then { parser.second.start() }
+    }
+
+    is IgnoreThen<*, *> -> {
+      parser.first
+        .start()
+        .then { parser.second.start() }
+    }
+
+    is Mapped<*, *, *> -> {
+      parser.inner.start()
+    }
+
+    is Sliced<*> -> {
+      parser.inner.start()
+    }
+
+    is WithSlice<*, *> -> {
+      parser.inner.start()
+    }
+
+    is Many<*, *> -> {
+      startOfMany(parser)
+    }
+
+    is Choice<*, *> -> {
+      parser.candidates
+        .map { it.start() }
+        .fold(Start.never, Start::or)
+    }
+
+    is Labeled<*, *> -> {
+      parser.inner
+        .start()
+        .labeled(parser.label)
+    }
+
+    is Recursive<*, *> -> {
+      parser.start()
+    }
+
+    is Custom<*, *> -> {
+      Start.opaque
+    }
+  }
+
+private fun startOfLiteral(
+  text: String,
+): Start =
+  if (text.isEmpty()) {
+    Start.empty(Expected.Literal(text))
+  } else {
+    Start.of(text[0]..text[0], Expected.Literal(text))
+  }
+
+private fun startOfMany(
+  many: Many<*, *>,
+): Start {
+  val itemStart = many.item.start()
+  return if (many.min == 0) {
+    itemStart.optional()
+  } else {
+    itemStart
+  }
+}
