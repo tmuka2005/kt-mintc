@@ -40,6 +40,45 @@ class ParserTest :
         .shouldBeSome()
     }
 
+    test("andIs requires both parsers to match at the same position") {
+      val lowerHex =
+        char('a'..'z').andIs(char('a'..'f'))
+      lowerHex
+        .then(any())
+        .slice()
+        .parse("cz")
+        .value
+        .shouldBeSome()
+        .toString() shouldBe "cz"
+      lowerHex
+        .parse("g")
+        .value
+        .shouldBeNone()
+    }
+
+    test("andIs reports the expected set of the inner parser") {
+      char('a'..'z')
+        .andIs(char('a'..'f'))
+        .parse("g")
+        .errorSummary() shouldBe
+        [Location(1, 1) to setOf(Expected.Range('a'..'z'))]
+    }
+
+    test("not succeeds without consuming when the inner parser fails") {
+      many(any().andIs(char('=').not()))
+        .slice()
+        .thenIgnore(char('='))
+        .parse("ab=")
+        .value
+        .shouldBeSome()
+        .toString() shouldBe "ab"
+      char('=')
+        .not()
+        .parse("=")
+        .value
+        .shouldBeNone()
+    }
+
     test("empty succeeds without consuming") {
       empty()
         .then(char('a'))

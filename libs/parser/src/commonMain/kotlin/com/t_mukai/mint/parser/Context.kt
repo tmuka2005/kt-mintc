@@ -19,6 +19,8 @@ public class Context<E> internal constructor(internal val input: CharArray) {
 
   internal var insideLabel: Boolean = false
 
+  private var silence: Int = 0
+
   private val text = Slice(input, 0, input.size)
 
   internal val clusters = CharClusters(text)
@@ -103,6 +105,11 @@ public class Context<E> internal constructor(internal val input: CharArray) {
     }
   }
 
+  internal fun matches(
+    parser: Parser<*, E>,
+  ): Boolean =
+    lookAhead(parser)
+
   internal fun furthestFailure(): Recorded.Unexpected? =
     furthestPos.takeIf { it >= 0 }?.let {
       Recorded.Unexpected(it, it, furthestExpected.toSet())
@@ -114,6 +121,15 @@ public class Context<E> internal constructor(internal val input: CharArray) {
     } else {
       clusters.clusterAt(pos)
     }
+
+  private fun lookAhead(
+    parser: Parser<*, E>,
+  ): Boolean {
+    val start = pos
+    val matched = quietly { parser.parse(this, Mode.Check).isSuccess }
+    pos = start
+    return matched
+  }
 
   private fun baseCharAtPos(): Char {
     val c = input[pos]
@@ -202,10 +218,21 @@ public class Context<E> internal constructor(internal val input: CharArray) {
     }
   }
 
+  private inline fun <R> quietly(
+    block: () -> R,
+  ): R {
+    silence++
+    try {
+      return block()
+    } finally {
+      silence--
+    }
+  }
+
   private fun reaches(
     at: Int,
   ): Boolean {
-    if (insideLabel || at < furthestPos) {
+    if (silence > 0 || insideLabel || at < furthestPos) {
       return false
     }
     if (at > furthestPos) {

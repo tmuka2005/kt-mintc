@@ -175,6 +175,14 @@ private fun startOf(
       parser.start()
     }
 
+    is AndIs<*, *> -> {
+      parser.inner.start()
+    }
+
+    is Not<*> -> {
+      Start.nullable
+    }
+
     is Custom<*, *> -> {
       Start.opaque
     }
