@@ -12,14 +12,16 @@ public fun <T, E> Parser<T, E>.or(
   choice(this, other.reporting(warn))
 
 public fun <T, R, E> Parser<T, E>.mapWithReports(
+  onDecorated: E?,
   transform: (T, List<E>) -> R,
 ): Parser<R, E> =
-  MappedWithReports(this, transform)
+  MappedWithReports(this, onDecorated, transform)
 
 // region internal
 
 internal class MappedWithReports<T, R, E>(
   val inner: Parser<T, E>,
+  private val onDecorated: E?,
   private val transform: (T, List<E>) -> R,
 ) : Parser<R, E> {
   override fun parse(
@@ -33,7 +35,13 @@ internal class MappedWithReports<T, R, E>(
     mode: Mode,
   ): ParseResult<R> {
     val from = ctx.diagnostics.size
-    val result = inner.parse(ctx, mode)
+    ctx.pushDecoration(onDecorated)
+    val result =
+      try {
+        inner.parse(ctx, mode)
+      } finally {
+        ctx.popDecoration()
+      }
     return when {
       result.isFailure -> {
         ParseResult.failure

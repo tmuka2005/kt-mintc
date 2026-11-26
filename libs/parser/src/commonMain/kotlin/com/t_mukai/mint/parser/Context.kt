@@ -7,7 +7,10 @@ import kotlin.text.unicode.CodePoint
 import kotlin.text.unicode.codePointAt
 import kotlin.text.unicode.toCodePoint
 
-public class Context<E> internal constructor(internal val input: CharArray) {
+public class Context<E> internal constructor(
+  internal val input: CharArray,
+  private val onDecorated: E?,
+) {
   public var pos: Int = 0
     private set
 
@@ -20,6 +23,8 @@ public class Context<E> internal constructor(internal val input: CharArray) {
   internal var insideLabel: Boolean = false
 
   private var silence: Int = 0
+
+  private val decorations: ArrayDeque<E?> = ArrayDeque()
 
   private val text = Slice(input, 0, input.size)
 
@@ -125,6 +130,16 @@ public class Context<E> internal constructor(internal val input: CharArray) {
   ): Boolean =
     lookAhead(parser)
 
+  internal fun pushDecoration(
+    kind: E?,
+  ) {
+    decorations.addLast(kind)
+  }
+
+  internal fun popDecoration() {
+    decorations.removeLast()
+  }
+
   internal fun furthestFailure(): Recorded.Unexpected? =
     furthestPos.takeIf { it >= 0 }?.let {
       Recorded.Unexpected(it, it, furthestExpected.toSet())
@@ -148,6 +163,21 @@ public class Context<E> internal constructor(internal val input: CharArray) {
         .merged()
         .mapNotNull { (it as? Recorded.Reported)?.kind }
     }
+
+  private fun reportDecorated(
+    start: Int,
+    end: Int,
+  ) {
+    val kind =
+      if (decorations.isEmpty()) {
+        onDecorated
+      } else {
+        decorations.last()
+      }
+    if (kind != null) {
+      report(start, end, kind)
+    }
+  }
 
   private fun lookAhead(
     parser: Parser<*, E>,
@@ -194,8 +224,15 @@ public class Context<E> internal constructor(internal val input: CharArray) {
     match: BaseMatch,
   ): Boolean =
     when (match) {
-      BaseMatch.Plain, BaseMatch.Decorated -> {
+      BaseMatch.Plain -> {
         advanceCluster()
+        true
+      }
+
+      BaseMatch.Decorated -> {
+        val start = pos
+        advanceCluster()
+        reportDecorated(start, pos)
         true
       }
 

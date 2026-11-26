@@ -10,10 +10,11 @@ public sealed interface Parser<out T, out E> {
   ): ParseResult<T>
 }
 
-public fun <T, E> Parser<T, E>.parse(
+public fun <T, E : Any> Parser<T, E>.parse(
   input: String,
+  onDecorated: E? = null,
 ): Output<T, E> =
-  parseAll(Context(input.toCharArray()))
+  parseAll(Context(input.toCharArray(), onDecorated))
 
 public fun <T> custom(
   block: Context<in Nothing>.(Mode) -> ParseResult<T>,

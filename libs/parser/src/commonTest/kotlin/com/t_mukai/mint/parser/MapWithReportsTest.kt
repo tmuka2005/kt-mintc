@@ -13,7 +13,12 @@ class MapWithReportsTest :
     val zero = char('0').or(char('o'), warn = "letter o")
 
     fun <T> Parser<T, String>.reports(): Parser<List<String>, String> =
-      mapWithReports { _, reports -> reports }
+      mapWithReports(null) { _, reports -> reports }
+
+    fun <T> Parser<T, Any>.decorations(
+      onDecorated: Any?,
+    ): Parser<List<Any>, Any> =
+      mapWithReports(onDecorated) { _, reports -> reports }
 
     test("no reports give an empty list") {
       many(zero)
@@ -64,7 +69,7 @@ class MapWithReportsTest :
     test("check mode does not call transform") {
       val (value, diagnostics) =
         zero
-          .mapWithReports { _, _ ->
+          .mapWithReports(null) { _, _ ->
             error("transform must not be called")
           }.slice()
           .parse("o")
@@ -72,4 +77,47 @@ class MapWithReportsTest :
       diagnostics shouldBe
         [Diagnostic.Reported(Location(1, 1), Location(1, 2), "letter o")]
     }
+
+    test("onDecorated overrides onDecorated of parse") {
+      val (value, diagnostics) =
+        char('"')
+          .decorations(Override)
+          .parse("\"\u0301", onDecorated = Decorated)
+      value shouldBeSome [Override]
+      diagnostics shouldBe
+        [Diagnostic.Reported(Location(1, 1), Location(1, 2), Override)]
+    }
+
+    test("null onDecorated reports no decoration") {
+      val (value, diagnostics) =
+        char('"')
+          .decorations(null)
+          .parse("\"\u0301", onDecorated = Decorated)
+      value
+        .shouldBeSome()
+        .shouldBeEmpty()
+      diagnostics.shouldBeEmpty()
+    }
+
+    test("innermost onDecorated wins") {
+      char('"')
+        .decorations(Override)
+        .decorations(Decorated)
+        .parse("\"\u0301")
+        .value shouldBeSome [Override]
+    }
+
+    test("onDecorated applies only inside its parser") {
+      char('"')
+        .decorations(Override)
+        .then(char('"'))
+        .parse("\"\u0301\"\u0301", onDecorated = Decorated)
+        .diagnostics shouldBe
+        [
+          Diagnostic.Reported(Location(1, 1), Location(1, 2), Override),
+          Diagnostic.Reported(Location(1, 2), Location(1, 3), Decorated),
+        ]
+    }
   })
+
+private data object Override

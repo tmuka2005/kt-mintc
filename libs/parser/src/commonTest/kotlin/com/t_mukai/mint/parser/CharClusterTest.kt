@@ -1,9 +1,11 @@
 package com.t_mukai.mint.parser
 
+import com.t_mukai.mint.unicode.Location
 import io.kotest.assertions.arrow.core.shouldBeNone
 import io.kotest.assertions.arrow.core.shouldBeSome
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.shouldBe
 
 @Suppress("unused")
 class CharClusterTest :
@@ -51,6 +53,27 @@ class CharClusterTest :
         .shouldBeEmpty()
     }
 
+    test("decorated char is accepted with onDecorated") {
+      char('"')
+        .parse("\"\u0301", onDecorated = Decorated)
+        .diagnostics shouldBe
+        [Diagnostic.Reported(Location(1, 1), Location(1, 2), Decorated)]
+    }
+
+    test("prepended char is accepted with onDecorated") {
+      char('"')
+        .parse("\u0600\"", onDecorated = Decorated)
+        .diagnostics shouldBe
+        [Diagnostic.Reported(Location(1, 1), Location(1, 2), Decorated)]
+    }
+
+    test("decorated xidContinue is accepted with onDecorated") {
+      xidContinue()
+        .parse("e\u0301", onDecorated = Decorated)
+        .diagnostics shouldBe
+        [Diagnostic.Reported(Location(1, 1), Location(1, 2), Decorated)]
+    }
+
     test("any consumes a whole cluster") {
       any()
         .parse("e\u0301")
@@ -64,6 +87,19 @@ class CharClusterTest :
         .parse("if\uD842\uDFB7")
         .value
         .shouldBeNone()
+    }
+
+    test("keyword accepts a decorated last letter with onDecorated") {
+      keyword("if")
+        .parse("if\u0301", onDecorated = Decorated)
+        .diagnostics shouldBe
+        [Diagnostic.Reported(Location(1, 2), Location(1, 3), Decorated)]
+    }
+
+    test("decorated char records nothing without onDecorated") {
+      val (value, diagnostics) = char('"').parse("\"\u0301")
+      value.shouldBeSome()
+      diagnostics.shouldBeEmpty()
     }
 
     test("newline reads CRLF as one line break") {
