@@ -9,6 +9,7 @@ import kotlin.text.unicode.toCodePoint
 
 public class Context<E> internal constructor(
   internal val input: CharArray,
+  private val skipUnit: Parser<*, E>,
   private val comment: Parser<*, E>?,
   private val terminator: Parser<*, E>?,
   private val onDecorated: E?,
@@ -83,8 +84,9 @@ public class Context<E> internal constructor(
 
   internal fun unexpected(
     failure: Recorded.Unexpected,
+    at: Int = diagnostics.size,
   ) {
-    diagnostics += failure
+    diagnostics.add(at, failure)
   }
 
   internal fun mark(): Mark =
@@ -143,6 +145,11 @@ public class Context<E> internal constructor(
   ): Boolean =
     lookAhead(parser)
 
+  internal fun forgetFailures() {
+    furthestPos = -1
+    furthestExpected.clear()
+  }
+
   internal fun pushDecoration(
     kind: E?,
   ) {
@@ -163,8 +170,14 @@ public class Context<E> internal constructor(
     delimiters.removeLast()
   }
 
+  internal fun isAtCloser(): Boolean =
+    !isAtEnd && delimiters.any { it.close == current }
+
   internal fun isAtTerminator(): Boolean =
     terminatesHere()
+
+  internal fun skipOneUnit(): Boolean =
+    skipsWith(skipUnit)
 
   internal fun skipPadding() {
     skipPaddingHere()

@@ -187,6 +187,14 @@ private fun startOf(
       Start.of(parser.open..parser.open, Expected.Char(parser.open))
     }
 
+    is Committed<*> -> {
+      parser.head.start()
+    }
+
+    is CommittedSeq<*, *> -> {
+      parser.head.start()
+    }
+
     is Recursive<*, *> -> {
       parser.start()
     }

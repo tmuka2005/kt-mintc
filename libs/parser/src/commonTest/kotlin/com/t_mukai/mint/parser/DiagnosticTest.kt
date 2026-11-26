@@ -74,6 +74,29 @@ class DiagnosticTest :
         [Diagnostic.Reported(Location(1, 1), Location(1, 2), "letter o")]
     }
 
+    test("lookahead during recovery does not report") {
+      val (value, diagnostics) =
+        char('(')
+          .commit()
+          .thenIgnore(char('x'))
+          .thenIgnore(zero)
+          .parse("(o")
+      value.shouldBeSome()
+      diagnostics shouldBe
+        [
+          Diagnostic.Unexpected(
+            Location(
+              1,
+              2,
+            ),
+            Location(1, 2),
+            setOf(Expected.Char('x')),
+            "o",
+          ),
+          Diagnostic.Reported(Location(1, 2), Location(1, 3), "letter o"),
+        ]
+    }
+
     test("diagnostics are located by row and display column") {
       val (value, diagnostics) =
         char('\u3042')

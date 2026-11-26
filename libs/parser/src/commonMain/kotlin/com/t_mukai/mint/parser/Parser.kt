@@ -12,11 +12,14 @@ public sealed interface Parser<out T, out E> {
 
 public fun <T, E : Any> Parser<T, E>.parse(
   input: String,
+  skipUnit: Parser<*, E> = any(),
   comment: Parser<*, E>? = null,
   terminator: Parser<*, E>? = null,
   onDecorated: E? = null,
 ): Output<T, E> =
-  parseAll(Context(input.toCharArray(), comment, terminator, onDecorated))
+  parseAll(
+    Context(input.toCharArray(), skipUnit, comment, terminator, onDecorated),
+  )
 
 public fun <T> custom(
   block: Context<in Nothing>.(Mode) -> ParseResult<T>,
