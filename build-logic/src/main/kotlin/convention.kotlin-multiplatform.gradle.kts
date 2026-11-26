@@ -16,7 +16,10 @@ kotlin {
     "-Xcontext-sensitive-resolution",
     "-Xfull-value-classes",
   )
-  compilerOptions.optIn.add("kotlin.contracts.ExperimentalContracts")
+  compilerOptions.optIn.addAll(
+    "kotlin.contracts.ExperimentalContracts",
+    "kotlin.text.unicode.ExperimentalUnicodeApi",
+  )
   jvm()
 }
 
