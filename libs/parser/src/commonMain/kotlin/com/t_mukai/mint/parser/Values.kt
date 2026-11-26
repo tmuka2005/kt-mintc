@@ -67,6 +67,12 @@ public sealed value class Diagnostic<out E> {
     public val expected: Set<Expected>,
     public val found: String?,
   ) : Diagnostic<Nothing>()
+
+  public value class Reported<out E>(
+    override val start: Location,
+    override val end: Location,
+    public val kind: E,
+  ) : Diagnostic<E>()
 }
 
 public value class Output<out T, out E> internal constructor(
@@ -89,6 +95,12 @@ internal sealed value class Recorded<out E> {
     override val end: Int,
     val expected: Set<Expected>,
   ) : Recorded<Nothing>()
+
+  value class Reported<out E>(
+    override val start: Int,
+    override val end: Int,
+    val kind: E,
+  ) : Recorded<E>()
 }
 
 private fun Slice.checkedCharAt(

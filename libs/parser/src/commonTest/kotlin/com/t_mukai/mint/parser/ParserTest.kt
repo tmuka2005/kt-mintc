@@ -79,6 +79,15 @@ class ParserTest :
         .shouldBeNone()
     }
 
+    test("not reports nothing from the inner parser") {
+      char('=')
+        .reporting("equals")
+        .not()
+        .then(any())
+        .parse("x")
+        .diagnostics shouldBe emptyList()
+    }
+
     test("empty succeeds without consuming") {
       empty()
         .then(char('a'))

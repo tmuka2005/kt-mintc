@@ -20,7 +20,15 @@ public fun <T> custom(
 ): Parser<T, Nothing> =
   Custom(block)
 
+public fun <T, E> customReporting(
+  block: Context<in E>.(Mode) -> ParseResult<T>,
+): Parser<T, E> =
+  Custom(block)
+
 // region internal
+
+internal fun <E> List<Recorded<E>>.merged(): List<Recorded<E>> =
+  mergeAdjacent(this)
 
 internal class Custom<T, E>(
   private val block: Context<in E>.(Mode) -> ParseResult<T>,
@@ -59,7 +67,7 @@ private fun <T, E> Parser<T, E>.parseAll(
 }
 
 private fun <E> Context<E>.locatedDiagnostics(): List<Diagnostic<E>> =
-  diagnostics.map { it.locatedIn(this) }
+  diagnostics.merged().map { it.locatedIn(this) }
 
 private fun <E> Recorded<E>.locatedIn(
   ctx: Context<E>,
@@ -69,6 +77,10 @@ private fun <E> Recorded<E>.locatedIn(
   return when (this) {
     is Recorded.Unexpected -> {
       Diagnostic.Unexpected(start, end, expected, ctx.foundAt(this.start))
+    }
+
+    is Recorded.Reported -> {
+      Diagnostic.Reported(start, end, kind)
     }
   }
 }
@@ -80,6 +92,55 @@ private fun Context<*>.foundAt(
     clusters.clusterAt(index).toString()
   } else {
     null
+  }
+
+private fun <E> mergeAdjacent(
+  recorded: List<Recorded<E>>,
+): List<Recorded<E>> {
+  val merged = ArrayList<Recorded<E>>(recorded.size)
+  val openEnds = HashMap<Recorded<E>, Int>()
+  for (next in recorded) {
+    if (next.start == next.end) {
+      merged += next
+      continue
+    }
+    val index = openEnds.remove(next.pointAt(next.start))
+    if (index == null) {
+      openEnds[next.pointAt(next.end)] = merged.size
+      merged += next
+    } else {
+      merged[index] = merged[index].spanning(merged[index].start, next.end)
+      openEnds[next.pointAt(next.end)] = index
+    }
+  }
+  return merged
+}
+
+private fun <E> Recorded<E>.pointAt(
+  pos: Int,
+): Recorded<E> =
+  spanning(pos, pos)
+
+private fun <E> Recorded<E>.spanning(
+  start: Int,
+  end: Int,
+): Recorded<E> =
+  when (this) {
+    is Recorded.Unexpected -> {
+      Recorded.Unexpected(
+        start = start,
+        end = end,
+        expected = expected,
+      )
+    }
+
+    is Recorded.Reported -> {
+      Recorded.Reported(
+        start = start,
+        end = end,
+        kind = kind,
+      )
+    }
   }
 
 // endregion

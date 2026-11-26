@@ -45,6 +45,16 @@ public class Context<E> internal constructor(internal val input: CharArray) {
     record(pos, expected)
   }
 
+  public fun report(
+    start: Int,
+    end: Int,
+    kind: E,
+  ) {
+    if (silence == 0) {
+      diagnostics += Recorded.Reported(start, end, kind)
+    }
+  }
+
   // region internal
 
   internal val isAtEnd: Boolean
@@ -67,6 +77,11 @@ public class Context<E> internal constructor(internal val input: CharArray) {
   ) {
     rewindTo(to)
   }
+
+  internal fun reportedKindsSince(
+    from: Int,
+  ): List<E> =
+    reportedKinds(from)
 
   internal fun advanceCluster() {
     pos = clusters.endOf(pos)
@@ -120,6 +135,18 @@ public class Context<E> internal constructor(internal val input: CharArray) {
       null
     } else {
       clusters.clusterAt(pos)
+    }
+
+  private fun reportedKinds(
+    from: Int,
+  ): List<E> =
+    if (diagnostics.size == from) {
+      emptyList()
+    } else {
+      diagnostics
+        .subList(from, diagnostics.size)
+        .merged()
+        .mapNotNull { (it as? Recorded.Reported)?.kind }
     }
 
   private fun lookAhead(

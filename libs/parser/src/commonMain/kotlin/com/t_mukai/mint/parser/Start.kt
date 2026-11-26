@@ -175,6 +175,14 @@ private fun startOf(
       parser.start()
     }
 
+    is Reporting<*, *> -> {
+      parser.inner.start()
+    }
+
+    is MappedWithReports<*, *, *> -> {
+      parser.inner.start()
+    }
+
     is AndIs<*, *> -> {
       parser.inner.start()
     }
