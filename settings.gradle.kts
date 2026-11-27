@@ -18,6 +18,7 @@ gradle.lifecycle.beforeProject {
 include(":app")
 include(":app:syntax")
 include(":app:evaluation")
+include(":app:repl")
 include(":libs:unicode")
 include(":libs:parser")
 include(":benchmark")
