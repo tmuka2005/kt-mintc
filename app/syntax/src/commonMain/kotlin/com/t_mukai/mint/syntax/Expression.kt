@@ -1,6 +1,7 @@
 package com.t_mukai.mint.syntax
 
 import com.t_mukai.mint.parser.Slice
+import com.t_mukai.mint.syntax.Expression.Assignment
 import com.t_mukai.mint.syntax.Expression.Primitive.Number
 import com.t_mukai.mint.syntax.Expression.Primitive.Number.FloatDec
 import com.t_mukai.mint.syntax.Expression.Primitive.Number.IntDec
@@ -74,6 +75,14 @@ public sealed value class Expression {
     override val text: Slice,
     public val operand: Expression,
   ) : Expression()
+
+  public value class Assignment(
+    override val text: Slice,
+    public val designation: Designation,
+    public val value: Expression,
+  ) : Expression()
+
+  public value class Invalid(override val text: Slice) : Expression()
 }
 
 // region internal
@@ -101,6 +110,10 @@ private val expressionEquals:
         b is IntHex && a.text == b.text && a.warnings == b.warnings
       }
 
+      is Invalid -> {
+        b is Invalid && a.text == b.text
+      }
+
       is Plus -> {
         b is Plus && sameBinary(a.text, a.lhs, a.rhs, b.text, b.lhs, b.rhs)
       }
@@ -122,6 +135,13 @@ private val expressionEquals:
           a.text == b.text &&
           callRecursive(a.operand to b.operand)
       }
+
+      is Assignment -> {
+        b is Assignment &&
+          a.text == b.text &&
+          a.designation == b.designation &&
+          callRecursive(a.value to b.value)
+      }
     }
   }
 
@@ -130,11 +150,13 @@ private val expressionHashCode =
     when (e) {
       is Identifier -> combine(e.text.hashCode(), e.warnings.hashCode())
       is Number -> combine(e.text.hashCode(), e.warnings.hashCode())
+      is Invalid -> e.text.hashCode()
       is Plus -> binaryHash(e.text, e.lhs, e.rhs)
       is Minus -> binaryHash(e.text, e.lhs, e.rhs)
       is Times -> binaryHash(e.text, e.lhs, e.rhs)
       is Div -> binaryHash(e.text, e.lhs, e.rhs)
       is UnaryMinus -> combine(e.text.hashCode(), callRecursive(e.operand))
+      is Assignment -> assignmentHash(e)
     }
   }
 
@@ -147,11 +169,13 @@ private val expressionToString =
       is IntDec -> leafString("IntDec", e.text, e.warnings)
       is FloatDec -> leafString("FloatDec", e.text, e.warnings)
       is IntHex -> leafString("IntHex", e.text, e.warnings)
+      is Invalid -> "Invalid(text=${e.text})"
       is Plus -> binaryString("Plus", e.text, e.lhs, e.rhs)
       is Minus -> binaryString("Minus", e.text, e.lhs, e.rhs)
       is Times -> binaryString("Times", e.text, e.lhs, e.rhs)
       is Div -> binaryString("Div", e.text, e.lhs, e.rhs)
       is UnaryMinus -> unaryString(e.text, callRecursive(e.operand))
+      is Assignment -> assignmentString(e, callRecursive(e.value))
     }
   }
 
@@ -173,6 +197,14 @@ private suspend fun DeepRecursiveScope<Expression, Int>.binaryHash(
   rhs: Expression,
 ): Int =
   combine(combine(text.hashCode(), callRecursive(lhs)), callRecursive(rhs))
+
+private suspend fun DeepRecursiveScope<Expression, Int>.assignmentHash(
+  assignment: Assignment,
+): Int =
+  combine(
+    combine(assignment.text.hashCode(), assignment.designation.hashCode()),
+    callRecursive(assignment.value),
+  )
 
 private fun combine(
   hash: Int,
@@ -200,5 +232,12 @@ private fun unaryString(
   operand: String,
 ): String =
   "UnaryMinus(text=$text, operand=$operand)"
+
+private fun assignmentString(
+  assignment: Assignment,
+  value: String,
+): String =
+  "Assignment(text=${assignment.text}, " +
+    "designation=${assignment.designation}, value=$value)"
 
 // endregion
