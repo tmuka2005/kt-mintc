@@ -1,1 +1,0 @@
-@../.claude/guidelines/kotlin.md

@@ -15,7 +15,6 @@ gradle.lifecycle.beforeProject {
   dependencyLocking.lockAllConfigurations()
 }
 
-include(":app")
 include(":app:syntax")
 include(":app:evaluation")
 include(":app:repl")
