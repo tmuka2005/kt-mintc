@@ -6,4 +6,18 @@ plugins {
 
 kotlin {
   jvm()
+
+  sourceSets {
+    commonMain {
+      dependencies {
+        api(project(":libs:parser"))
+      }
+    }
+
+    commonTest {
+      dependencies {
+        implementation(libs.kotest.assertions.arrow)
+      }
+    }
+  }
 }
