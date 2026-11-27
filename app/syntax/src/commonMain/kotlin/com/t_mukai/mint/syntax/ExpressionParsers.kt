@@ -34,7 +34,7 @@ public companion val Parser.ofExpression: Parser<Expression, Any>
 
 private val arithmetic: Parser<Expression, Any> =
   pratt(
-    choice(Parser.ofNumber, Parser.ofIdentifier),
+    choice(Parser.ofNumber, Parser.ofIdentifier, Parser.ofReplResult),
     [
       [Operator.unaryMinus],
       [Operator.times, Operator.div],

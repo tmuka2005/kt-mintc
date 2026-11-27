@@ -2,6 +2,7 @@ package com.t_mukai.mint.syntax
 
 import arrow.core.Option
 import com.t_mukai.mint.parser.Diagnostic
+import com.t_mukai.mint.parser.Expected
 import com.t_mukai.mint.parser.Parser
 import com.t_mukai.mint.parser.parse
 import com.t_mukai.mint.syntax.Expression.Assignment
@@ -59,6 +60,27 @@ class ExpressionParsersTest :
       parse("valx")
         .shouldBeSome()
         .shouldBeInstanceOf<Expression.Identifier>()
+    }
+
+    test("dollar and digits are a numbered result") {
+      parse("$12")
+        .shouldBeSome()
+        .shouldBeInstanceOf<Expression.ReplResult>()
+        .text
+        .toString() shouldBe "$12"
+    }
+
+    test("dollar without digits expects decimal digits") {
+      Parser.ofExpression
+        .parse("$")
+        .diagnostics
+        .single()
+        .shouldBeInstanceOf<Diagnostic.Unexpected>()
+        .expected shouldBe setOf(Expected.Label("decimal digits"))
+    }
+
+    test("numbered result is an invalid designation") {
+      invalidDesignation("val $1 = 2") shouldBe "$1"
     }
 
     test("expression on the left side is an invalid designation") {

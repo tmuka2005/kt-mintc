@@ -82,6 +82,8 @@ public sealed value class Expression {
     public val value: Expression,
   ) : Expression()
 
+  public value class ReplResult(override val text: Slice) : Expression()
+
   public value class Invalid(override val text: Slice) : Expression()
 }
 
@@ -108,6 +110,10 @@ private val expressionEquals:
 
       is IntHex -> {
         b is IntHex && a.text == b.text && a.warnings == b.warnings
+      }
+
+      is ReplResult -> {
+        b is ReplResult && a.text == b.text
       }
 
       is Invalid -> {
@@ -150,6 +156,7 @@ private val expressionHashCode =
     when (e) {
       is Identifier -> combine(e.text.hashCode(), e.warnings.hashCode())
       is Number -> combine(e.text.hashCode(), e.warnings.hashCode())
+      is ReplResult -> e.text.hashCode()
       is Invalid -> e.text.hashCode()
       is Plus -> binaryHash(e.text, e.lhs, e.rhs)
       is Minus -> binaryHash(e.text, e.lhs, e.rhs)
@@ -169,6 +176,7 @@ private val expressionToString =
       is IntDec -> leafString("IntDec", e.text, e.warnings)
       is FloatDec -> leafString("FloatDec", e.text, e.warnings)
       is IntHex -> leafString("IntHex", e.text, e.warnings)
+      is ReplResult -> "ReplResult(text=${e.text})"
       is Invalid -> "Invalid(text=${e.text})"
       is Plus -> binaryString("Plus", e.text, e.lhs, e.rhs)
       is Minus -> binaryString("Minus", e.text, e.lhs, e.rhs)
