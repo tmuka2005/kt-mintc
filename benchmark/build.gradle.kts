@@ -3,6 +3,18 @@ plugins {
   id("convention.detekt")
 }
 
+kotlin {
+  sourceSets {
+    commonMain {
+      dependencies {
+        implementation(project(":libs:parser"))
+        implementation(libs.better.parse)
+        implementation(libs.parsus)
+      }
+    }
+  }
+}
+
 benchmark {
   targets {
     register("jvm")

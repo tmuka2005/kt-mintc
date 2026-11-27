@@ -14,6 +14,8 @@ kotest-property = { module = "io.kotest:kotest-property", version = "+" }
 kotest-assertions-arrow = { module = "io.kotest:kotest-assertions-arrow", version = "+" }
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version = "+" }
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version = "+" }
+better-parse = { module = "com.github.h0tk3y.betterParse:better-parse", version = "+" }
+parsus = { module = "me.alllex.parsus:parsus", version = "+" }
 ktlint-cli = { module = "io.github.ktlint.core:ktlint-cli", version = "+" }
 
 [bundles]
