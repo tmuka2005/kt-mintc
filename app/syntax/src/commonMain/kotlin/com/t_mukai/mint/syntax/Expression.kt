@@ -5,6 +5,11 @@ import com.t_mukai.mint.parser.Slice
 public sealed value class Expression {
   public abstract val text: Slice
 
+  public value class Identifier internal constructor(
+    override val text: Slice,
+    public val warnings: List<IdentifierWarning>,
+  ) : Expression()
+
   public sealed value class Primitive : Expression() {
     public sealed value class Number : Primitive() {
       public abstract val warnings: List<NumberWarning>
