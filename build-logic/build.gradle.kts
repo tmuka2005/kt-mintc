@@ -39,4 +39,12 @@ dependencies {
     libs.plugins.detekt
       .asDependency(),
   )
+  implementation(
+    libs.plugins.kotlinx.benchmark
+      .asDependency(),
+  )
+  implementation(
+    libs.plugins.kotlin.allopen
+      .asDependency(),
+  )
 }

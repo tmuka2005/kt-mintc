@@ -13,6 +13,7 @@ kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version 
 kotest-property = { module = "io.kotest:kotest-property", version = "+" }
 kotest-assertions-arrow = { module = "io.kotest:kotest-assertions-arrow", version = "+" }
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version = "+" }
+kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version = "+" }
 ktlint-cli = { module = "io.github.ktlint.core:ktlint-cli", version = "+" }
 
 [bundles]
@@ -33,3 +34,5 @@ kotlinx-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version = "+" }
 ksp = { id = "com.google.devtools.ksp", version = "+" }
 kotest = { id = "io.kotest", version = "+" }
 detekt = { id = "dev.detekt", version = "+" }
+kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version = "+" }
+kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version = "+" }
